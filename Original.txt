@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1B6EF3" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Daily Milk Tracker (Google Drive Sync)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1B6EF3;
+      --primary-dark: #1557C0;
+      --primary-light: #E8F0FE;
+      --whatsapp: #25D366;
+      --whatsapp-dark: #1EBE5D;
+      --bg: #F4F6F9;
+      --card: #FFFFFF;
+      --text: #1F2937;
+      --text-muted: #6B7280;
+      --border: #E5E7EB;
+      --danger: #EF4444;
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding-bottom: 84px;
+      min-height: 100vh;
+    }
+
+    /* App Bar */
+    .app-bar {
+      background: var(--primary);
+      color: #fff;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(27, 110, 243, 0.25);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .app-bar h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Container */
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .tab-view {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .tab-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="month"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: #FAFAFA;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #fff;
+    }
+
+    /* Quick Quantity Chips */
+    .chips {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .chip {
+      padding: 10px 4px;
+      text-align: center;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Unit Toggle */
+    .qty-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .unit-toggle {
+      display: flex;
+      background: #F3F4F6;
+      border-radius: 12px;
+      padding: 4px;
+      border: 1.5px solid var(--border);
+    }
+
+    .unit-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .unit-btn.active {
+      background: #fff;
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Cost Preview */
+    .cost-preview {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    /* Message Preview */
+    .msg-preview {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      color: #166534;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      margin-bottom: 16px;
+      white-space: pre-line;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-whatsapp {
+      background: var(--whatsapp);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+      margin-bottom: 10px;
+    }
+
+    .btn-naga {
+      background: #F59E0B;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      margin-bottom: 10px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    /* Summary Grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat-box {
+      background: #F8FAFC;
+      padding: 12px 8px;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat-val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    /* History List */
+    .entry-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .entry-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .entry-date {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .entry-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .entry-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .icon-btn.wa {
+      background: #DCFCE7;
+      color: #16A34A;
+    }
+
+    .icon-btn.del {
+      background: #FEE2E2;
+      color: var(--danger);
+    }
+
+    /* Code Box in Setup */
+    .code-box {
+      background: #1E293B;
+      color: #E2E8F0;
+      padding: 12px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 0.72rem;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre;
+      margin: 10px 0;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0 12px;
+      z-index: 999;
+    }
+
+    .nav-item {
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 20px;
+      touch-action: manipulation;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-icon {
+      font-size: 1.3rem;
+      pointer-events: none;
+    }
+
+    .nav-item span {
+      pointer-events: none;
+    }
+
+    .alert-banner {
+      background: #FEF3C7;
+      border: 1px solid #F59E0B;
+      color: #92400E;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+      display: none;
+      cursor: pointer;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 85px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1F2937;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-bar">
+    <h1>🥛 Milk Tracker</h1>
+    <span class="sync-badge" id="syncBadge">☁️ Local Only</span>
+  </header>
+
+  <main class="container">
+
+    <!-- TAB 1: DAILY ENTRY -->
+    <section id="tab-entry" class="tab-view active">
+      <div id="setupWarning" class="alert-banner" onclick="switchTab('tab-settings')">
+        ⚠️ Tap here to add your milkman's name, WhatsApp number, and Google Drive URL in <b>Settings</b>.
+      </div>
+
+      <div class="card">
+        <div class="card-title">Log Daily Milk Entry</div>
+
+        <div class="form-group">
+          <label for="entryDate">Date</label>
+          <input type="date" id="entryDate" />
+        </div>
+
+        <div class="form-group">
+          <label>Quick Select Quantity</label>
+          <div class="chips" id="qtyChips">
+            <div class="chip" data-val="0.5">0.5</div>
+            <div class="chip" data-val="1">1</div>
+            <div class="chip active" data-val="1.5">1.5</div>
+            <div class="chip" data-val="2">2</div>
+            <div class="chip" data-val="3">3</div>
+          </div>
+
+          <div class="qty-row">
+            <input type="number" id="entryQty" step="0.25" min="0" value="1.5" placeholder="Enter quantity" />
+            <div class="unit-toggle">
+              <button type="button" class="unit-btn active" data-unit="kg">kg</button>
+              <button type="button" class="unit-btn" data-unit="L">L</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cost-preview">
+          <span>Estimated Amount:</span>
+          <span id="liveCost">₹0.00</span>
+        </div>
+
+        <div class="msg-preview" id="liveMsgPreview"></div>
+
+        <button type="button" class="btn btn-whatsapp" id="btnSaveAndSend">
+          <span>📲 Save to Drive &amp; Send WhatsApp</span>
+        </button>
+
+        <button type="button" class="btn btn-naga" id="btnNagaAndSend">
+          <span>⚠️ Today is Naga (No Milk) &amp; Send WhatsApp</span>
+        </button>
+
+        <button type="button" class="btn btn-outline" id="btnSaveOnly">
+          <span>☁️ Save Entry Only</span>
+        </button>
+      </div>
+
+      <!-- Monthly Summary Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Monthly Summary</span>
+          <input type="month" id="summaryMonth" style="width: auto; padding: 6px 10px; font-size: 0.82rem;" />
+        </div>
+
+        <div class="summary-grid">
+          <div class="stat-box">
+            <div class="stat-val" id="statQty">0</div>
+            <div class="stat-lbl">Total Milk</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="statAmount">₹0</div>
+            <div class="stat-lbl">Total Bill</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="statDays">0</div>
+            <div class="stat-lbl">Days Logged</div>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="btnSendSummary">
+          <span>🧾 Send Monthly Bill on WhatsApp</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 2: HISTORY -->
+    <section id="tab-history" class="tab-view">
+      <div class="card">
+        <div class="card-title">
+          <span>Delivery History</span>
+          <button type="button" id="btnSyncNow" style="background:var(--primary-light); color:var(--primary); border:none; padding:6px 12px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer;">
+            🔄 Sync Drive
+          </button>
+        </div>
+        <div id="historyList"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: SETTINGS -->
+    <section id="tab-settings" class="tab-view">
+      <div class="card">
+        <div class="card-title">☁️ Google Drive Sync Setup</div>
+        <div class="form-group">
+          <label for="driveScriptUrl">Google Apps Script Web App URL</label>
+          <input type="url" id="driveScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+        </div>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          Paste your Google Web App URL above to auto-save every entry into a Google Sheet in your Google Drive.
+        </p>
+
+        <div class="card-title" style="margin-top: 18px;">Milkman &amp; Address Settings</div>
+
+        <div class="form-group">
+          <label for="milkmanName">Milkman Name</label>
+          <input type="text" id="milkmanName" placeholder="e.g., Ramesh" />
+        </div>
+
+        <div class="form-group">
+          <label for="milkmanPhone">Milkman WhatsApp Number</label>
+          <input type="tel" id="milkmanPhone" placeholder="e.g., +919876543210" />
+        </div>
+
+        <div class="form-group">
+          <label for="customerAddress">Your Flat / Tower Address</label>
+          <input type="text" id="customerAddress" value="Flat no. 1303-A , Prestige towers" />
+        </div>
+
+        <div class="form-group">
+          <label for="milkRate">Rate per kg / Liter (₹)</label>
+          <input type="number" id="milkRate" step="0.5" min="0" placeholder="e.g., 66" />
+        </div>
+
+        <button type="button" class="btn btn-primary" id="btnSaveSettings">
+          <span>Save Settings</span>
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 How to Connect Google Drive (2 Mins)</div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+          1. Open <b>sheets.new</b> in your browser to create a new Google Sheet in your Drive.<br>
+          2. Click <b>Extensions → Apps Script</b> in the top menu.<br>
+          3. Delete any existing code, paste the script below, and click <b>Save</b>:<br>
+        </p>
+        <div class="code-box" id="scriptCodeBox"></div>
+        <button type="button" class="btn btn-outline" id="btnCopyScript" style="padding:10px; font-size:0.85rem; margin-bottom:10px;">
+          📋 Copy Apps Script Code
+        </button>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+          4. Click <b>Deploy → New deployment</b>.<br>
+          5. Select Type: <b>Web app</b>.<br>
+          6. Set <b>Who has access</b> to <b>Anyone</b>, then click <b>Deploy</b>.<br>
+          7. Copy the <b>Web app URL</b> and paste it into the box at the top of Settings!
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="toast" id="toast">Saved!</div>
+
+  <nav class="bottom-nav">
+    <button type="button" class="nav-item active" data-tab="tab-entry">
+      <span class="nav-icon">➕</span>
+      <span>Entry</span>
+    </button>
+    <button type="button" class="nav-item" data-tab="tab-history">
+      <span class="nav-icon">📋</span>
+      <span>History</span>
+    </button>
+    <button type="button" class="nav-item" data-tab="tab-settings">
+      <span class="nav-icon">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <script>
+    const APPS_SCRIPT_TEMPLATE = [
+      "function doGet(e) {",
+      "  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();",
+      "  if (e.parameter.action === 'get') {",
+      "    var data = sheet.getDataRange().getValues();",
+      "    var entries = [];",
+      "    for (var i = 1; i < data.length; i++) {",
+      "      if (data[i][0]) {",
+      "        entries.push({",
+      "          id: data[i][0],",
+      "          date: String(data[i][1]),",
+      "          qty: Number(data[i][2]),",
+      "          unit: String(data[i][3]),",
+      "          rate: Number(data[i][4]),",
+      "          amount: Number(data[i][5]),",
+      "          isNaga: Boolean(data[i][6])",
+      "        });",
+      "      }",
+      "    }",
+      "    return ContentService.createTextOutput(JSON.stringify({ status: 'success', entries: entries }))",
+      "      .setMimeType(ContentService.MimeType.JSON);",
+      "  }",
+      "  return ContentService.createTextOutput(JSON.stringify({ status: 'ok' })).setMimeType(ContentService.MimeType.JSON);",
+      "}",
+      "",
+      "function doPost(e) {",
+      "  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();",
+      "  var payload = JSON.parse(e.postData.contents);",
+      "  if (sheet.getLastRow() === 0) {",
+      "    sheet.appendRow(['ID', 'Date', 'Quantity', 'Unit', 'Rate', 'Amount', 'Is Naga', 'Timestamp']);",
+      "  }",
+      "  if (payload.action === 'save') {",
+      "    var entry = payload.entry;",
+      "    var data = sheet.getDataRange().getValues();",
+      "    var updated = false;",
+      "    for (var i = 1; i < data.length; i++) {",
+      "      if (String(data[i][1]) === String(entry.date)) {",
+      "        sheet.getRange(i + 1, 1, 1, 8).setValues([[entry.id, entry.date, entry.qty, entry.unit, entry.rate, entry.amount, entry.isNaga, new Date().toISOString()]]);",
+      "        updated = true;",
+      "        break;",
+      "      }",
+      "    }",
+      "    if (!updated) {",
+      "      sheet.appendRow([entry.id, entry.date, entry.qty, entry.unit, entry.rate, entry.amount, entry.isNaga, new Date().toISOString()]);",
+      "    }",
+      "    return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))",
+      "      .setMimeType(ContentService.MimeType.JSON);",
+      "  }",
+      "  if (payload.action === 'delete') {",
+      "    var data = sheet.getDataRange().getValues();",
+      "    for (var i = 1; i < data.length; i++) {",
+      "      if (String(data[i][0]) === String(payload.id)) {",
+      "        sheet.deleteRow(i + 1);",
+      "        break;",
+      "      }",
+      "    }",
+      "    return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))",
+      "      .setMimeType(ContentService.MimeType.JSON);",
+      "  }",
+      "}"
+    ].join("\n");
+
+    document.getElementById('scriptCodeBox').textContent = APPS_SCRIPT_TEMPLATE;
+
+    // Robust Global Tab Switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(function(v) {
+        v.classList.remove('active');
+      });
+      document.querySelectorAll('.nav-item').forEach(function(n) {
+        n.classList.remove('active');
+      });
+      var targetTab = document.getElementById(tabId);
+      if (targetTab) targetTab.classList.add('active');
+      var targetNav = document.querySelector('.nav-item[data-tab="' + tabId + '"]');
+      if (targetNav) targetNav.classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    // Attach click listeners to all nav items safely
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var tabId = item.getAttribute('data-tab');
+          switchTab(tabId);
+        });
+      });
+    });
+
+    // Also handle immediate binding if DOM is already loaded
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.onclick = function() {
+          var tabId = item.getAttribute('data-tab');
+          switchTab(tabId);
+        };
+      });
+    }
+
+    // State
+    const DEFAULT_ADDRESS = 'Flat no. 1303-A , Prestige towers';
+    let settings = JSON.parse(localStorage.getItem('milk_settings')) || {
+      name: '',
+      phone: '+91',
+      address: DEFAULT_ADDRESS,
+      rate: 65,
+      defaultUnit: 'kg',
+      scriptUrl: ''
+    };
+    if (!settings.address) settings.address = DEFAULT_ADDRESS;
+
+    let entries = JSON.parse(localStorage.getItem('milk_entries')) || [];
+    let currentUnit = settings.defaultUnit || 'kg';
+
+    // DOM Elements
+    const entryDateEl = document.getElementById('entryDate');
+    const entryQtyEl = document.getElementById('entryQty');
+    const summaryMonthEl = document.getElementById('summaryMonth');
+    const liveCostEl = document.getElementById('liveCost');
+    const liveMsgPreviewEl = document.getElementById('liveMsgPreview');
+    const syncBadgeEl = document.getElementById('syncBadge');
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    entryDateEl.value = yyyy + '-' + mm + '-' + dd;
+    summaryMonthEl.value = yyyy + '-' + mm;
+
+    function formatFormattedDate(dateStr) {
+      const parts = dateStr.split('-').map(Number);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return parts[2] + ' ' + months[parts[1] - 1] + ' ' + parts[0];
+    }
+
+    function buildWhatsAppMessage(dateStr, qty, unit, isNaga) {
+      const milkman = (settings.name && settings.name.trim()) ? settings.name.trim() : 'Bhaiya';
+      const address = (settings.address && settings.address.trim()) ? settings.address.trim() : DEFAULT_ADDRESS;
+      const formattedDate = formatFormattedDate(dateStr);
+      if (isNaga) {
+        return 'Hello ' + milkman + ', today (' + formattedDate + ') is Naga (No Milk) for ' + address + '. Please note this in my account. Thank you.';
+      }
+      return 'Hello ' + milkman + ', milk received today (' + formattedDate + '): ' + qty + ' ' + unit + ' by ' + address + ' \nPlease note this in my account. Thank you.';
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function() { t.classList.remove('show'); }, 2500);
+    }
+
+    function setSyncStatus(statusText) {
+      syncBadgeEl.textContent = statusText;
+    }
+
+    function updateLivePreviews() {
+      const qty = parseFloat(entryQtyEl.value) || 0;
+      const rate = parseFloat(settings.rate) || 0;
+      liveCostEl.textContent = '₹' + (qty * rate).toFixed(2);
+
+      const dateVal = entryDateEl.value || (yyyy + '-' + mm + '-' + dd);
+      liveMsgPreviewEl.textContent = buildWhatsAppMessage(dateVal, qty, currentUnit, false);
+    }
+
+    function refreshUI() {
+      const cleanPhone = (settings.phone || '').replace(/[^0-9]/g, '');
+      const hasDrive = settings.scriptUrl && settings.scriptUrl.startsWith('https://script.google.com');
+      setSyncStatus(hasDrive ? '☁️ Drive Connected' : '📱 Local Storage');
+      document.getElementById('setupWarning').style.display = (cleanPhone.length >= 10 && hasDrive) ? 'none' : 'block';
+
+      document.getElementById('driveScriptUrl').value = settings.scriptUrl || '';
+      document.getElementById('milkmanName').value = settings.name || '';
+      document.getElementById('milkmanPhone').value = settings.phone || '+91';
+      document.getElementById('customerAddress').value = settings.address || DEFAULT_ADDRESS;
+      document.getElementById('milkRate').value = settings.rate || '';
+
+      updateLivePreviews();
+      renderSummary();
+      renderHistory();
+    }
+
+    async function pushToGoogleDrive(payload) {
+      if (!settings.scriptUrl || !settings.scriptUrl.startsWith('https://')) return false;
+      setSyncStatus('⏳ Syncing...');
+      try {
+        await fetch(settings.scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        setSyncStatus('☁️ Saved to Drive');
+        return true;
+      } catch (err) {
+        console.error(err);
+        setSyncStatus('⚠️ Offline Saved');
+        return false;
+      }
+    }
+
+    async function pullFromGoogleDrive() {
+      if (!settings.scriptUrl || !settings.scriptUrl.startsWith('https://')) {
+        showToast('Add Google Script URL in Settings first');
+        return;
+      }
+      setSyncStatus('⏳ Fetching...');
+      try {
+        const res = await fetch(settings.scriptUrl + '?action=get');
+        const json = await res.json();
+        if (json.status === 'success' && Array.isArray(json.entries)) {
+          entries = json.entries.sort(function(a, b) { return b.date.localeCompare(a.date); });
+          localStorage.setItem('milk_entries', JSON.stringify(entries));
+          refreshUI();
+          showToast('Synced with Google Drive!');
+        }
+      } catch (err) {
+        console.error(err);
+        setSyncStatus('⚠️ Sync Failed');
+        showToast('Could not fetch from Drive');
+      }
+    }
+
+    function sendWhatsAppMessage(text) {
+      const cleanPhone = (settings.phone || '').replace(/[^0-9]/g, '');
+      if (cleanPhone.length < 10) {
+        alert("Please set your milkman's valid WhatsApp number in Settings first.");
+        switchTab('tab-settings');
+        return;
+      }
+      const url = 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(text);
+      window.open(url, '_blank');
+    }
+
+    async function saveEntry(isNaga, sendWa) {
+      const dateVal = entryDateEl.value;
+      const qtyVal = isNaga ? 0 : (parseFloat(entryQtyEl.value) || 0);
+      if (!dateVal) {
+        alert('Please enter a valid date.');
+        return;
+      }
+
+      const rate = parseFloat(settings.rate) || 0;
+      const newEntry = {
+        id: Date.now(),
+        date: dateVal,
+        qty: qtyVal,
+        unit: currentUnit,
+        rate: rate,
+        amount: qtyVal * rate,
+        isNaga: isNaga
+      };
+
+      const existingIdx = entries.findIndex(function(e) { return e.date === dateVal; });
+      if (existingIdx > -1) {
+        newEntry.id = entries[existingIdx].id;
+        entries[existingIdx] = newEntry;
+      } else {
+        entries.push(newEntry);
+      }
+      entries.sort(function(a, b) { return b.date.localeCompare(a.date); });
+      localStorage.setItem('milk_entries', JSON.stringify(entries));
+      refreshUI();
+
+      const synced = await pushToGoogleDrive({ action: 'save', entry: newEntry });
+      showToast(synced ? 'Saved to Google Drive!' : 'Saved locally!');
+
+      if (sendWa) {
+        const msg = buildWhatsAppMessage(dateVal, qtyVal, currentUnit, isNaga);
+        sendWhatsAppMessage(msg);
+      }
+    }
+
+    function renderSummary() {
+      const selectedMonth = summaryMonthEl.value;
+      const filtered = entries.filter(function(e) { return e.date.startsWith(selectedMonth); });
+      const activeEntries = filtered.filter(function(e) { return !e.isNaga; });
+      const totalQty = activeEntries.reduce(function(sum, e) { return sum + e.qty; }, 0);
+      const totalAmt = activeEntries.reduce(function(sum, e) { return sum + e.amount; }, 0);
+
+      document.getElementById('statQty').textContent = totalQty + ' ' + currentUnit;
+      document.getElementById('statAmount').textContent = '₹' + totalAmt.toFixed(0);
+      document.getElementById('statDays').textContent = activeEntries.length + ' days (' + filtered.length + ' total)';
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('historyList');
+      if (entries.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px 0; font-size:0.9rem;">No milk entries logged yet.</p>';
+        return;
+      }
+
+      list.innerHTML = entries.map(function(e) {
+        const subText = e.isNaga ? '<span style="color:#D97706; font-weight:700;">⚠️ Naga (No Milk)</span>' : (e.qty + ' ' + e.unit + ' • ₹' + Number(e.amount).toFixed(2));
+        return '<div class="entry-item">' +
+          '<div>' +
+            '<div class="entry-date">' + formatFormattedDate(e.date) + '</div>' +
+            '<div class="entry-sub">' + subText + '</div>' +
+          '</div>' +
+          '<div class="entry-actions">' +
+            '<button type="button" class="icon-btn wa" title="Resend WhatsApp" onclick="resendEntry(' + e.id + ')">📲</button>' +
+            '<button type="button" class="icon-btn del" title="Delete" onclick="deleteEntry(' + e.id + ')">🗑️</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    window.resendEntry = function(id) {
+      const e = entries.find(function(item) { return item.id === id; });
+      if (!e) return;
+      const msg = buildWhatsAppMessage(e.date, e.qty, e.unit, e.isNaga);
+      sendWhatsAppMessage(msg);
+    };
+
+    window.deleteEntry = async function(id) {
+      if (!confirm('Delete this milk entry from app and Google Drive?')) return;
+      entries = entries.filter(function(item) { return item.id !== id; });
+      localStorage.setItem('milk_entries', JSON.stringify(entries));
+      refreshUI();
+      await pushToGoogleDrive({ action: 'delete', id: id });
+      showToast('Entry deleted');
+    };
+
+    document.querySelectorAll('.chip').forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        document.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+        entryQtyEl.value = chip.dataset.val;
+        updateLivePreviews();
+      });
+    });
+
+    entryQtyEl.addEventListener('input', function() {
+      document.querySelectorAll('.chip').forEach(function(c) {
+        c.classList.toggle('active', c.dataset.val === entryQtyEl.value);
+      });
+      updateLivePreviews();
+    });
+
+    entryDateEl.addEventListener('change', updateLivePreviews);
+
+    document.querySelectorAll('.unit-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.unit-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentUnit = btn.dataset.unit;
+        settings.defaultUnit = currentUnit;
+        localStorage.setItem('milk_settings', JSON.stringify(settings));
+        updateLivePreviews();
+        renderSummary();
+      });
+    });
+
+    document.getElementById('btnSaveAndSend').addEventListener('click', function() { saveEntry(false, true); });
+    document.getElementById('btnNagaAndSend').addEventListener('click', function() { saveEntry(true, true); });
+    document.getElementById('btnSaveOnly').addEventListener('click', function() { saveEntry(false, false); });
+    document.getElementById('btnSyncNow').addEventListener('click', pullFromGoogleDrive);
+    summaryMonthEl.addEventListener('change', renderSummary);
+
+    document.getElementById('btnSendSummary').addEventListener('click', function() {
+      const selectedMonth = summaryMonthEl.value;
+      const filtered = entries.filter(function(e) { return e.date.startsWith(selectedMonth); });
+      const activeEntries = filtered.filter(function(e) { return !e.isNaga; });
+      const totalQty = activeEntries.reduce(function(sum, e) { return sum + e.qty; }, 0);
+      const totalAmt = activeEntries.reduce(function(sum, e) { return sum + e.amount; }, 0);
+      const milkman = (settings.name && settings.name.trim()) ? settings.name.trim() : 'Bhaiya';
+      const address = (settings.address && settings.address.trim()) ? settings.address.trim() : DEFAULT_ADDRESS;
+      const msg = 'Hello ' + milkman + ', Monthly Milk Summary (' + selectedMonth + ') for ' + address + ':\nTotal Milk: ' + totalQty + ' ' + currentUnit + ' (' + activeEntries.length + ' days)\nTotal Amount: ₹' + totalAmt.toFixed(2) + '\nThank you.';
+      sendWhatsAppMessage(msg);
+    });
+
+    document.getElementById('btnSaveSettings').addEventListener('click', function() {
+      settings.scriptUrl = document.getElementById('driveScriptUrl').value.trim();
+      settings.name = document.getElementById('milkmanName').value.trim();
+      settings.phone = document.getElementById('milkmanPhone').value.trim();
+      settings.address = document.getElementById('customerAddress').value.trim() || DEFAULT_ADDRESS;
+      settings.rate = parseFloat(document.getElementById('milkRate').value) || 0;
+      localStorage.setItem('milk_settings', JSON.stringify(settings));
+      refreshUI();
+      showToast('Settings saved!');
+      if (settings.scriptUrl) pullFromGoogleDrive();
+      switchTab('tab-entry');
+    });
+
+    document.getElementById('btnCopyScript').addEventListener('click', function() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(APPS_SCRIPT_TEMPLATE);
+        showToast('Apps Script copied!');
+      } else {
+        const range = document.createRange();
+        range.selectNode(document.getElementById('scriptCodeBox'));
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        showToast('Apps Script copied!');
+      }
+    });
+
+    refreshUI();
+    if (settings.scriptUrl) {
+      pullFromGoogleDrive();
+    }
+  </script>
+</body>
+</html>
