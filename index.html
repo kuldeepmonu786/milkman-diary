@@ -616,15 +616,15 @@
   <div class="toast" id="toast">Saved!</div>
 
   <nav class="bottom-nav">
-    <button type="button" class="nav-item active" data-tab="tab-entry">
+    <button type="button" class="nav-item active" data-tab="tab-entry" onclick="switchTab('tab-entry')">
       <span class="nav-icon">➕</span>
       <span>Entry</span>
     </button>
-    <button type="button" class="nav-item" data-tab="tab-history">
+    <button type="button" class="nav-item" data-tab="tab-history" onclick="switchTab('tab-history')">
       <span class="nav-icon">📋</span>
       <span>History</span>
     </button>
-    <button type="button" class="nav-item" data-tab="tab-settings">
+    <button type="button" class="nav-item" data-tab="tab-settings" onclick="switchTab('tab-settings')">
       <span class="nav-icon">⚙️</span>
       <span>Settings</span>
     </button>
@@ -641,7 +641,7 @@
       "      if (data[i][0]) {",
       "        entries.push({",
       "          id: data[i][0],",
-      "          date: String(data[i][1]),",
+      "          date: (data[i][1] instanceof Date) ? Utilities.formatDate(data[i][1], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(data[i][1]).replace(/^'/, ''),",
       "          qty: Number(data[i][2]),",
       "          unit: String(data[i][3]),",
       "          rate: Number(data[i][4]),",
@@ -667,14 +667,15 @@
       "    var data = sheet.getDataRange().getValues();",
       "    var updated = false;",
       "    for (var i = 1; i < data.length; i++) {",
-      "      if (String(data[i][1]) === String(entry.date)) {",
-      "        sheet.getRange(i + 1, 1, 1, 8).setValues([[entry.id, entry.date, entry.qty, entry.unit, entry.rate, entry.amount, entry.isNaga, new Date().toISOString()]]);",
+      "      var rowDate = (data[i][1] instanceof Date) ? Utilities.formatDate(data[i][1], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(data[i][1]).replace(/^'/, '');",
+      "      if (rowDate === String(entry.date)) {",
+      "        sheet.getRange(i + 1, 1, 1, 8).setValues([[entry.id, \"'\" + entry.date, entry.qty, entry.unit, entry.rate, entry.amount, entry.isNaga, new Date().toISOString()]]);",
       "        updated = true;",
       "        break;",
       "      }",
       "    }",
       "    if (!updated) {",
-      "      sheet.appendRow([entry.id, entry.date, entry.qty, entry.unit, entry.rate, entry.amount, entry.isNaga, new Date().toISOString()]);",
+      "      sheet.appendRow([entry.id, \"'\" + entry.date, entry.qty, entry.unit, entry.rate, entry.amount, entry.isNaga, new Date().toISOString()]);",
       "    }",
       "    return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))",
       "      .setMimeType(ContentService.MimeType.JSON);",
@@ -710,25 +711,13 @@
       window.scrollTo(0, 0);
     }
 
-    // Attach click listeners to all nav items safely
-    document.addEventListener('DOMContentLoaded', function() {
-      document.querySelectorAll('.nav-item').forEach(function(item) {
-        item.addEventListener('click', function() {
-          var tabId = item.getAttribute('data-tab');
-          switchTab(tabId);
-        });
+    // Bind nav-item click handlers immediately
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        var tabId = item.getAttribute('data-tab');
+        switchTab(tabId);
       });
     });
-
-    // Also handle immediate binding if DOM is already loaded
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      document.querySelectorAll('.nav-item').forEach(function(item) {
-        item.onclick = function() {
-          var tabId = item.getAttribute('data-tab');
-          switchTab(tabId);
-        };
-      });
-    }
 
     // State
     const DEFAULT_ADDRESS = 'Flat no. 1303-A , Prestige towers';
@@ -742,7 +731,10 @@
     };
     if (!settings.address) settings.address = DEFAULT_ADDRESS;
 
-    let entries = JSON.parse(localStorage.getItem('milk_entries')) || [];
+    let entries = (JSON.parse(localStorage.getItem('milk_entries')) || []).map(function(item) {
+      item.date = normalizeDateStr(item.date);
+      return item;
+    });
     let currentUnit = settings.defaultUnit || 'kg';
 
     // DOM Elements
@@ -760,10 +752,32 @@
     entryDateEl.value = yyyy + '-' + mm + '-' + dd;
     summaryMonthEl.value = yyyy + '-' + mm;
 
+    function normalizeDateStr(rawDate) {
+      if (!rawDate) return '';
+      var s = String(rawDate).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+        var d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        return s.slice(0, 10);
+      }
+      var parsed = new Date(s);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.getFullYear() + '-' + String(parsed.getMonth() + 1).padStart(2, '0') + '-' + String(parsed.getDate()).padStart(2, '0');
+      }
+      return s;
+    }
+
     function formatFormattedDate(dateStr) {
-      const parts = dateStr.split('-').map(Number);
+      const norm = normalizeDateStr(dateStr);
+      const parts = norm.split('-').map(Number);
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return parts[2] + ' ' + months[parts[1] - 1] + ' ' + parts[0];
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2]) && months[parts[1] - 1]) {
+        return parts[2] + ' ' + months[parts[1] - 1] + ' ' + parts[0];
+      }
+      return String(dateStr || 'Unknown Date');
     }
 
     function buildWhatsAppMessage(dateStr, qty, unit, isNaga) {
@@ -842,7 +856,10 @@
         const res = await fetch(settings.scriptUrl + '?action=get');
         const json = await res.json();
         if (json.status === 'success' && Array.isArray(json.entries)) {
-          entries = json.entries.sort(function(a, b) { return b.date.localeCompare(a.date); });
+          entries = json.entries.map(function(item) {
+            item.date = normalizeDateStr(item.date);
+            return item;
+          }).sort(function(a, b) { return b.date.localeCompare(a.date); });
           localStorage.setItem('milk_entries', JSON.stringify(entries));
           refreshUI();
           showToast('Synced with Google Drive!');
